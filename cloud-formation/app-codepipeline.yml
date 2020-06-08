@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Deploy infra'
+Description: 'Deploy app codepipline'
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
@@ -10,11 +10,15 @@ Metadata:
       - RepositoryName
       - BranchName
     - Label:
-        default: 'BuildSpec'
+        default: 'Codebuild'
       Parameters:
       - MyAppBuildSpecPath
 #Input Parameters
 Parameters:
+  MyAppName:
+    Default: 'robofactory'
+    Description: 'My App name'
+    Type: String
   MyAppBuildSpecPath:
     Default: 'buildspec.yml'
     Description: 'Location of the buildspec file in your project'
@@ -81,6 +85,14 @@ Resources:
         BuildSpec: !Ref MyAppBuildSpecPath
   MyAppCodePipelineS3ArtifactStore:
     Type: AWS::S3::Bucket
+  MyAppECSRepo:
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Join 
+          - ''
+          - - !Ref MyAppName
+            - '/'
+            - !Ref AWS::StackName
   MyCodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
@@ -107,6 +119,7 @@ Resources:
       RoleArn: !GetAtt MyCodePipelineRole.Arn
       Stages: 
         - Name: 'Source'
+          # https://docs.aws.amazon.com/codepipeline/latest/userguide/reference-pipeline-structure.html#actions-valid-providers
           Actions:
             - Name: ApplicationSource
               ActionTypeId: 
@@ -135,7 +148,14 @@ Resources:
               Configuration:
                 ProjectName: !Ref MyCodeBuild
                 PrimarySource: SourceArtifact
-                EnvironmentVariables: '[{"name":"TEST_VARIABLE","value":"TEST_VALUE","type":"PLAINTEXT"}]'
+                EnvironmentVariables: !Sub |
+                  [
+                    {
+                      "name":"REPOSITORY_URI",
+                      "value":"${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${MyAppECSRepo}",
+                      "type":"PLAINTEXT"
+                    }
+                  ]
               OutputArtifacts:
                 - Name: BuildArtifact
               InputArtifacts:

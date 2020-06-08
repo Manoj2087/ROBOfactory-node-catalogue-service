@@ -1,44 +1,29 @@
 version: 0.2
 
-env:
-  variables:
-    TEST_BUILD_SPEC_ENV_VAR: 'test'
-    NODE_VER: '12'
-    PYTHON_VER: '3.7'
-  exported-variables:
-    - CODEBUILD_START_TIME
-  secrets-manager:
-    TEST_BUILD_SPEC_SECRETS_MGR_VAR: my-app-secrets:git-personal-access-token
-
 phases:
-  install:
-    runtime-versions:
-      nodejs: '$NODE_VER'
-      python: '$PYTHON_VER'
-    commands:
-      - echo 'install phase command1'
-      - echo 'install phase command2'
-    finally:
-      - echo 'install phase Finally'
   pre_build:
     commands:
-      - echo 'pre_build phase command1'
-      - echo 'pre_build phase command2'
-      - printenv
-    finally:
-      - echo 'pre_build phase Finally'
+      - echo Logging into Amazon ECR...
+      - aws --version
+      - $(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
+      - echo $REPOSITORY_URI
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=build-$(echo $CODEBUILD_BUILD_ID | awk -F":" '{print $2}')
   build:
     commands:
-      - echo 'build phase command1'
-      - echo 'build phase command2'
-    finally:
-      - echo 'build phase Finally'
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
-      - echo 'post_build phase command1'
-      - echo 'post_build phase command2'
-    finally:
-      - echo 'post_build phase Finally'
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+artifacts:
+  files:
+    - imageDetail.json
 # reports:
 #   report-name-or-arn:
 #     files:
