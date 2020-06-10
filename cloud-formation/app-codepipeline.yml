@@ -170,7 +170,6 @@ Resources:
       Filters: 
         - JsonPath: $.ref
           MatchEquals: 'refs/heads/{Branch}'
-      Name: 'AppPipelineWebhook'
       RegisterWithThirdParty: true
       TargetAction: 'ApplicationSource'
       TargetPipeline: !Ref MyAppCodePipeline

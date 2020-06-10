@@ -39,7 +39,7 @@ aws cloudformation delete-stack \
 ```
 aws cloudformation deploy \
 --template-file cloud-formation/app-codepipeline.yml \
---stack-name node-robot-catalogue-service-pipeline \
+--stack-name node-robot-catalogue-service-app-pipeline \
 --parameter-overrides \
 GitHubOwner=Manoj2087 \
 BranchName=master \
