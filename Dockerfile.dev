@@ -13,8 +13,6 @@ RUN node --version \
   && npm install \
   && apk --no-cache add curl \
   && curl --version
-# If you are building your code for production
-# RUN npm ci --only=production
 
 # Bundle app source
 COPY . .
@@ -25,7 +23,8 @@ HEALTHCHECK --interval=10s \
   --timeout=3s \
   --start-period=10s \
   --retries=3 \
-  CMD curl -f http://localhost:3000/v1/robots/healthcheck/ || exit 1
+  CMD curl --fail --silent \
+    http://localhost:3000/v1/robots/healthcheck/ || exit 1
 
 ENTRYPOINT ["npm"]
 CMD ["run", "start"]

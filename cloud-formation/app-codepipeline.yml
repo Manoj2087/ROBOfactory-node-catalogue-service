@@ -36,6 +36,153 @@ Parameters:
   
 #Build AWs resources
 Resources:
+  # Test Infra
+  TestRobotCatalogueTable: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      TableName:
+        Fn::Join:
+          - '-'
+          - - 'test'
+            - 'robot-catalogue'
+      AttributeDefinitions: 
+        - 
+          AttributeName: "R_NAME"
+          AttributeType: "S"
+        - 
+          AttributeName: "R_TYPE"
+          AttributeType: "S"
+      KeySchema: 
+        - 
+          AttributeName: "R_NAME"
+          KeyType: "HASH"
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      GlobalSecondaryIndexes: 
+        - 
+          IndexName: 'type-index'
+          KeySchema: 
+            - 
+              AttributeName: "R_TYPE"
+              KeyType: "HASH"
+          Projection: 
+            NonKeyAttributes: 
+              - "R_NAME"
+              - "R_IMG_URL"
+            ProjectionType: "INCLUDE"
+          ProvisionedThroughput: 
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
+  # TestMyAppTaskDefinition:
+  #   Type: AWS::ECS::TaskDefinition
+  #   Properties: 
+  #     ContainerDefinitions: 
+  #       - Command: 
+  #           - run
+  #           - test
+  #         Cpu: 512
+  #         Environment: 
+  #           - MYAPP_AWS_REGION: !Ref AWS::Region
+  #           - MYAPP_AWS_ENDPOINT: !Sub "https://dynamodb.{AWS::Region}.amazonaws.com"
+  #           - MYAPP_ROBOT_TABLE: !Ref TestRobotCatalogueTable
+  #           - MYAPP_ROBOT_T_TYPE_INDEX: "type-index"
+  #         Image: String
+  #         Interactive: Boolean
+  #         Links: 
+  #           - String
+  #         LinuxParameters: 
+  #           LinuxParameters
+  #         LogConfiguration: 
+  #           LogConfiguration
+  #         Memory: Integer
+  #         MemoryReservation: Integer
+  #         MountPoints: 
+  #           - MountPoint
+  #         Name: String
+  #         PortMappings: 
+  #           - PortMapping
+  #         Privileged: Boolean
+  #         PseudoTerminal: Boolean
+  #         ReadonlyRootFilesystem: Boolean
+  #         RepositoryCredentials: 
+  #           RepositoryCredentials
+  #         ResourceRequirements: 
+  #           - ResourceRequirement
+  #         Secrets: 
+  #           - Secret
+  #         StartTimeout: Integer
+  #         StopTimeout: Integer
+  #         SystemControls: 
+  #           - SystemControl
+  #         Ulimits: 
+  #           - Ulimit
+  #         User: String
+  #         VolumesFrom: 
+  #           - VolumeFrom
+  #         WorkingDirectory: String
+  #     Cpu: String
+  #     ExecutionRoleArn: String
+  #     Family: String
+  #     InferenceAccelerators: 
+  #       - InferenceAccelerator
+  #     IpcMode: String
+  #     Memory: String
+  #     NetworkMode: String
+  #     PidMode: String
+  #     PlacementConstraints: 
+  #       - TaskDefinitionPlacementConstraint
+  #     ProxyConfiguration: 
+  #       ProxyConfiguration
+  #     RequiresCompatibilities: 
+  #       - String
+  #     Tags: 
+  #       - Tag
+  #     TaskRoleArn: String
+  #     Volumes: 
+  #       - Volume
+  # Prod Infra
+  ProdRobotCatalogueTable: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      TableName:
+        Fn::Join:
+          - '-'
+          - - 'prod'
+            - 'robot-catalogue'
+      AttributeDefinitions: 
+        - 
+          AttributeName: "R_NAME"
+          AttributeType: "S"
+        - 
+          AttributeName: "R_TYPE"
+          AttributeType: "S"
+      KeySchema: 
+        - 
+          AttributeName: "R_NAME"
+          KeyType: "HASH"
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      GlobalSecondaryIndexes: 
+        - 
+          IndexName: 
+            Fn::Join:
+              - '-'
+              - - 'prod'
+                - 'type-index'
+          KeySchema: 
+            - 
+              AttributeName: "R_TYPE"
+              KeyType: "HASH"
+          Projection: 
+            NonKeyAttributes: 
+              - "R_NAME"
+              - "R_IMG_URL"
+            ProjectionType: "INCLUDE"
+          ProvisionedThroughput: 
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
   MyCodeBuildLogGroup:
     Type: AWS::Logs::LogGroup
     Properties: 

@@ -20,7 +20,8 @@ HEALTHCHECK --interval=10s \
   --timeout=3s \
   --start-period=10s \
   --retries=3 \
-  CMD curl -f http://localhost:3000/v1/robots/healthcheck/ || exit 1
+  CMD curl --fail --silent \
+    http://localhost:3000/v1/robots/healthcheck/ || exit 1
 
 EXPOSE 3000
 

@@ -17,34 +17,23 @@ docker-compose down
 docker image prune -f
 ```
 
-## Deploy CF - App Pipeline
-```
-aws cloudformation deploy \
---template-file cloud-formation/infra.yml \
---stack-name <stack-name> \
---parameter-overrides \
-ProjectName=<project-name> \
-CidrPrefixe="10.10" \
---region <region>
-```
-
-## Delete CF - App Pipeline
-```
-aws cloudformation delete-stack \
---stack-name <stack-name> \
---region <region>
-```
-
 ## Deploy App pipeline
 ```
+# Create\update
 aws cloudformation deploy \
 --template-file cloud-formation/app-codepipeline.yml \
 --stack-name node-robot-catalogue-service-app-pipeline \
 --parameter-overrides \
 GitHubOwner=Manoj2087 \
 BranchName=master \
-MyAppBuildSpecPath=buildspec.yml \
 RepositoryName=ROBOfactory-node-catalogue-service \
+MyAppBuildSpecPath=buildspec.yml \
+MyAppECSRepoURI= \
 --capabilities CAPABILITY_IAM \
+--region ap-southeast-2
+
+# Delete
+aws cloudformation delete-stack \
+--stack-name node-robot-catalogue-service-app-pipeline \
 --region ap-southeast-2
 ```
