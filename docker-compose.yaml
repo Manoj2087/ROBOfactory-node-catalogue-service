@@ -20,7 +20,7 @@ services:
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
       # Pass enivironment Variable DEBUG  ddb*,robots*
       DEBUG: $DEBUG
-    ports:          
+    ports:
       - "3000:3000"
     volumes:
       - '.:/usr/src/app'
