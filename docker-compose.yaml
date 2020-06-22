@@ -10,7 +10,7 @@ services:
   node-robot-catalogue-service:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: config-files/docker/Dockerfile.dev
     environment:
       MYAPP_AWS_REGION: localhost
       MYAPP_AWS_ENDPOINT: "http://robot-catalogue-ddb:8000"

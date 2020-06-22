@@ -4,3 +4,5 @@ build
 .dockerignore
 Dockerfile-dev
 Dockerfile-prod
+config-files/
+coverage/
