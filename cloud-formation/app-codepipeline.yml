@@ -12,15 +12,20 @@ Metadata:
     - Label:
         default: 'Codebuild'
       Parameters:
-      - MyAppBuildSpecPath
+      - TestMyAppBuildSpecPath
+      - ProdMyAppBuildSpecPath
 #Input Parameters
 Parameters:
   MyAppName:
     Default: 'robofactory'
     Description: 'My App name'
     Type: String
-  MyAppBuildSpecPath:
-    Default: 'buildspec.yml'
+  TestMyAppBuildSpecPath:
+    Default: 'config-files/codebuild/buildspec-test.yml'
+    Description: 'Location of the buildspec file in your project'
+    Type: String
+  ProdMyAppBuildSpecPath:
+    Default: 'config-files/codebuild/buildspec-prod.yml'
     Description: 'Location of the buildspec file in your project'
     Type: String
   RepositoryName:
@@ -40,11 +45,7 @@ Resources:
   TestRobotCatalogueTable: 
     Type: AWS::DynamoDB::Table
     Properties: 
-      TableName:
-        Fn::Join:
-          - '-'
-          - - 'test'
-            - 'robot-catalogue'
+      TableName: !Join ['-', ['test', 'robot-catalogue', !Ref 'AWS::StackName']]
       AttributeDefinitions: 
         - 
           AttributeName: "R_NAME"
@@ -74,82 +75,115 @@ Resources:
           ProvisionedThroughput: 
             ReadCapacityUnits: 5
             WriteCapacityUnits: 5
-  # TestMyAppTaskDefinition:
-  #   Type: AWS::ECS::TaskDefinition
-  #   Properties: 
-  #     ContainerDefinitions: 
-  #       - Command: 
-  #           - run
-  #           - test
-  #         Cpu: 512
-  #         Environment: 
-  #           - MYAPP_AWS_REGION: !Ref AWS::Region
-  #           - MYAPP_AWS_ENDPOINT: !Sub "https://dynamodb.{AWS::Region}.amazonaws.com"
-  #           - MYAPP_ROBOT_TABLE: !Ref TestRobotCatalogueTable
-  #           - MYAPP_ROBOT_T_TYPE_INDEX: "type-index"
-  #         Image: String
-  #         Interactive: Boolean
-  #         Links: 
-  #           - String
-  #         LinuxParameters: 
-  #           LinuxParameters
-  #         LogConfiguration: 
-  #           LogConfiguration
-  #         Memory: Integer
-  #         MemoryReservation: Integer
-  #         MountPoints: 
-  #           - MountPoint
-  #         Name: String
-  #         PortMappings: 
-  #           - PortMapping
-  #         Privileged: Boolean
-  #         PseudoTerminal: Boolean
-  #         ReadonlyRootFilesystem: Boolean
-  #         RepositoryCredentials: 
-  #           RepositoryCredentials
-  #         ResourceRequirements: 
-  #           - ResourceRequirement
-  #         Secrets: 
-  #           - Secret
-  #         StartTimeout: Integer
-  #         StopTimeout: Integer
-  #         SystemControls: 
-  #           - SystemControl
-  #         Ulimits: 
-  #           - Ulimit
-  #         User: String
-  #         VolumesFrom: 
-  #           - VolumeFrom
-  #         WorkingDirectory: String
-  #     Cpu: String
-  #     ExecutionRoleArn: String
-  #     Family: String
-  #     InferenceAccelerators: 
-  #       - InferenceAccelerator
-  #     IpcMode: String
-  #     Memory: String
-  #     NetworkMode: String
-  #     PidMode: String
-  #     PlacementConstraints: 
-  #       - TaskDefinitionPlacementConstraint
-  #     ProxyConfiguration: 
-  #       ProxyConfiguration
-  #     RequiresCompatibilities: 
-  #       - String
-  #     Tags: 
-  #       - Tag
-  #     TaskRoleArn: String
-  #     Volumes: 
-  #       - Volume
+  TestMyAppECSRepo: 
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Join ['/', [!Ref MyAppName, 'test', !Ref 'AWS::StackName']]
+  TestMyAppTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: dynamodb
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: '*'
+            Resource: !GetAtt TestRobotCatalogueTable.Arn 
+  TestMyAppTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties: 
+      ContainerDefinitions: 
+        - Name: 'NodeCatalogueService'
+          Command: 
+            - 'run'
+            - 'test'
+          Environment: 
+            - Name: 'MYAPP_AWS_REGION'
+              Value: !Ref AWS::Region
+            - Name: 'MYAPP_AWS_ENDPOINT'
+              Value: !Sub 'https://dynamodb.${AWS::Region}.amazonaws.com'
+            - Name: 'MYAPP_ROBOT_TABLE'
+              Value: !Ref TestRobotCatalogueTable
+            - Name: 'MYAPP_ROBOT_T_TYPE_INDEX'
+              Value: 'type-index'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${TestMyAppECSRepo}'
+          LogConfiguration: 
+            LogDriver: 'awslogs'
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref TestMyAppTaskLogGroup
+              awslogs-stream-prefix: 'my-app'
+          PortMappings: 
+            - ContainerPort: 3000
+      Cpu: '256'
+      Memory: '0.5GB'
+      NetworkMode: 'awsvpc'
+      RequiresCompatibilities: 
+        - 'EC2'
+      TaskRoleArn: !GetAtt TestMyAppTaskRole.Arn
+  TestMyAppTaskLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      RetentionInDays: 7
+  TestMyCodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [codebuild.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: codebuild
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: '*'
+            Resource: '*'
+  TestMyCodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      RetentionInDays: 7
+  TestMyCodeBuildLogStream:
+    Type: AWS::Logs::LogStream
+    Properties: 
+      LogGroupName: !Ref  TestMyCodeBuildLogGroup
+      LogStreamName: "MyAppLogStream"            
+  TestMyCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Artifacts: 
+        OverrideArtifactName: true
+        Type: 'CODEPIPELINE'
+      Description: 'my app codebuild'
+      Environment: 
+        ComputeType: 'BUILD_GENERAL1_SMALL'
+        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:3.0'
+        PrivilegedMode: true
+        Type: 'LINUX_CONTAINER'
+      LogsConfig: 
+        CloudWatchLogs: 
+          GroupName: !Ref  TestMyCodeBuildLogGroup
+          Status: 'ENABLED'
+          StreamName: !Ref TestMyCodeBuildLogStream
+      ServiceRole: !Ref TestMyCodeBuildRole
+      Source: 
+        Type: 'CODEPIPELINE'
+        BuildSpec: !Ref TestMyAppBuildSpecPath
   # Prod Infra
   ProdRobotCatalogueTable: 
     Type: AWS::DynamoDB::Table
     Properties: 
-      TableName:
-        Fn::Join:
-          - '-'
-          - - 'prod'
-            - 'robot-catalogue'
+      TableName: !Join ['-', ['prod', 'robot-catalogue', !Ref 'AWS::StackName']]
       AttributeDefinitions: 
         - 
           AttributeName: "R_NAME"
@@ -183,16 +217,64 @@ Resources:
           ProvisionedThroughput: 
             ReadCapacityUnits: 5
             WriteCapacityUnits: 5
-  MyCodeBuildLogGroup:
+  ProdMyAppECSRepo: 
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Join ['/', [!Ref MyAppName, 'prod', !Ref 'AWS::StackName']]
+  ProdMyAppTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: dynamodb
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: '*'
+            Resource: !GetAtt ProdRobotCatalogueTable.Arn 
+  ProdMyAppTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties: 
+      ContainerDefinitions: 
+        - Name: 'NodeCatalogueService'
+          Command: 
+            - 'run'
+            - 'prod'
+          Environment: 
+            - Name: 'MYAPP_AWS_REGION'
+              Value: !Ref AWS::Region
+            - Name: 'MYAPP_AWS_ENDPOINT'
+              Value: !Sub 'https://dynamodb.${AWS::Region}.amazonaws.com'
+            - Name: 'MYAPP_ROBOT_TABLE'
+              Value: !Ref ProdRobotCatalogueTable
+            - Name: 'MYAPP_ROBOT_T_TYPE_INDEX'
+              Value: 'type-index'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ProdMyAppECSRepo}'
+          LogConfiguration: 
+            LogDriver: 'awslogs'
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref ProdMyAppTaskLogGroup
+              awslogs-stream-prefix: 'my-app'
+          PortMappings: 
+            - ContainerPort: 3000
+      Cpu: '256'
+      Memory: '0.5GB'
+      NetworkMode: 'awsvpc'
+      RequiresCompatibilities: 
+        - 'EC2'
+      TaskRoleArn: !GetAtt ProdMyAppTaskRole.Arn
+  ProdMyAppTaskLogGroup:
     Type: AWS::Logs::LogGroup
     Properties: 
       RetentionInDays: 7
-  MyCodeBuildLogStream:
-    Type: AWS::Logs::LogStream
-    Properties: 
-      LogGroupName: !Ref MyCodeBuildLogGroup
-      LogStreamName: "MyAppLogStream"
-  MyCodeBuildRole:
+  ProdMyCodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -209,7 +291,16 @@ Resources:
           - Effect: Allow
             Action: '*'
             Resource: '*'
-  MyCodeBuild:
+  ProdMyCodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      RetentionInDays: 7
+  ProdMyCodeBuildLogStream:
+    Type: AWS::Logs::LogStream
+    Properties: 
+      LogGroupName: !Ref  ProdMyCodeBuildLogGroup
+      LogStreamName: "MyAppLogStream"            
+  ProdMyCodeBuild:
     Type: AWS::CodeBuild::Project
     Properties: 
       Artifacts: 
@@ -223,23 +314,16 @@ Resources:
         Type: 'LINUX_CONTAINER'
       LogsConfig: 
         CloudWatchLogs: 
-          GroupName: !Ref MyCodeBuildLogGroup
+          GroupName: !Ref  ProdMyCodeBuildLogGroup
           Status: 'ENABLED'
-          StreamName: !Ref MyCodeBuildLogStream
-      ServiceRole: !Ref MyCodeBuildRole
+          StreamName: !Ref ProdMyCodeBuildLogStream
+      ServiceRole: !Ref ProdMyCodeBuildRole
       Source: 
         Type: 'CODEPIPELINE'
-        BuildSpec: !Ref MyAppBuildSpecPath
+        BuildSpec: !Ref ProdMyAppBuildSpecPath
+  # Share
   MyAppCodePipelineS3ArtifactStore:
     Type: AWS::S3::Bucket
-  MyAppECSRepo:
-    Type: AWS::ECR::Repository
-    Properties: 
-      RepositoryName: !Join 
-          - ''
-          - - !Ref MyAppName
-            - '/'
-            - !Ref AWS::StackName
   MyCodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
@@ -284,7 +368,7 @@ Resources:
               OutputArtifacts: 
                 - Name: SourceArtifact
               RunOrder: 1
-        - Name: 'Build'
+        - Name: 'TestBuild'
           Actions:
             - Name: BuildContainer
               ActionTypeId:
@@ -293,21 +377,45 @@ Resources:
                 Provider: CodeBuild
                 Version: '1'
               Configuration:
-                ProjectName: !Ref MyCodeBuild
+                ProjectName: !Ref TestMyCodeBuild
                 PrimarySource: SourceArtifact
                 EnvironmentVariables: !Sub |
                   [
                     {
                       "name":"REPOSITORY_URI",
-                      "value":"${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${MyAppECSRepo}",
+                      "value":"${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${TestMyAppECSRepo}",
                       "type":"PLAINTEXT"
                     }
                   ]
               OutputArtifacts:
-                - Name: BuildArtifact
+                - Name: TestBuildArtifact
               InputArtifacts:
                 - Name: SourceArtifact
               RunOrder: 2
+        - Name: 'ProdBuild'
+          Actions:
+            - Name: BuildContainer
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref TestMyCodeBuild
+                PrimarySource: SourceArtifact
+                EnvironmentVariables: !Sub |
+                  [
+                    {
+                      "name":"REPOSITORY_URI",
+                      "value":"${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ProdMyAppECSRepo}",
+                      "type":"PLAINTEXT"
+                    }
+                  ]
+              OutputArtifacts:
+                - Name: ProdBuildArtifact
+              InputArtifacts:
+                - Name: SourceArtifact
+              RunOrder: 3
   MyAppGitHubWebHook:
     Type: AWS::CodePipeline::Webhook
     Properties: 

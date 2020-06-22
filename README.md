@@ -3,15 +3,18 @@
 ## Run Dev locally
 ```
 ENV=dev DEBUG="ddb*,robots*" \
-docker-compose up --build
+docker-compose \
+up --build
 ```
 ## Run Test locally
 ```
-ENV=test docker-compose up --build
+ENV=test docker-compose \
+up --build
 ```
 ## Destroy Dev/Test
 ```
-docker-compose down
+docker-compose \
+down
 
 # clear the local docker images
 docker image prune -f
@@ -27,8 +30,6 @@ aws cloudformation deploy \
 GitHubOwner=Manoj2087 \
 BranchName=master \
 RepositoryName=ROBOfactory-node-catalogue-service \
-MyAppBuildSpecPath=buildspec.yml \
-MyAppECSRepoURI= \
 --capabilities CAPABILITY_IAM \
 --region ap-southeast-2
 
